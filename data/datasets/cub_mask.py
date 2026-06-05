@@ -17,9 +17,10 @@ class CustomCub2011(Dataset):
     filename = 'CUB_200_2011.tgz'
     tgz_md5 = '97eceeb196236b17998738112f37df78'
 
-    def __init__(self, root, train=True, transform=None, target_transform=None, loader=default_loader, download=True):
+    def __init__(self, root, mask_root = None, train=True, transform=None, target_transform=None, loader=default_loader, download=True):
+        self.mask_root = os.path.expanduser(mask_root) if mask_root else os.path.join(self.root, 'masks')
         self.root = os.path.expanduser(root)
-        self.transform = transform
+        self.transform = transform 
         self.target_transform = target_transform
         self.loader = loader
         self.train = train
@@ -74,7 +75,7 @@ class CustomCub2011(Dataset):
         img_path = os.path.join(self.root, self.base_folder, sample.filepath)
         target = sample.target - 1  # Targets start at 1 by default, so shift to 0
         img = self.loader(img_path)
-        mask_path = os.path.join(self.root, 'masks', sample.filepath.replace('.jpg', '.npy'))
+        mask_path = os.path.join(self.mask_root, sample.filepath.replace('.jpg', '.npy'))
         mask = np.load(mask_path)
         global_mean_values = np.array(img).mean(axis=(0, 1), keepdims=True)
         mask_image = np.where(np.repeat(mask[:, :, np.newaxis], 3, axis=2) == 0, global_mean_values, np.array(img))
@@ -135,10 +136,11 @@ def get_cub_datasets(train_transform, test_transform, train_classes=range(160), 
                      split_train_val=False, seed=0, download=False,args=None):
 
     np.random.seed(seed)
+    custom_mask_dir = getattr(args, 'mask_dir', None)
 
     # Init entire training set
-    whole_training_set = CustomCub2011(root=args.dataset_dir, transform=train_transform, train=True, download=download)
-
+    # whole_training_set = CustomCub2011(root=args.dataset_dir, transform=train_transform, train=True, download=download)
+    whole_training_set = CustomCub2011(root=args.dataset_dir, mask_root=custom_mask_dir, transform=train_transform, train=True, download=download)
     # Get labelled training set which has subsampled classes, then subsample some indices from that
     train_dataset_labelled = subsample_classes(deepcopy(whole_training_set), include_classes=train_classes)
     subsample_indices = subsample_instances(train_dataset_labelled, prop_indices_to_subsample=prop_train_labels)

@@ -42,6 +42,7 @@ def parse_args():
     parser.add_argument('--exp_root', type=str, default='dev_outputs')
     parser.add_argument('--exp_name', default='mos', type=str)
     parser.add_argument("--dataset_dir"  , type=str, default='cub', help="dataset root path")
+    parser.add_argument("--mask_dir"     , type=str, default='cub/masks', help="custom masks root path")
     parser.add_argument("--osr_split_dir", type=str, default='data/ssb_splits', help="osr")
     parser.add_argument("--pretrain_path", type=str, default='pretrain_weight/dino_vitbase16_pretrain.pth', help="pretrain_path")
     args                       = parser.parse_args()

@@ -19,7 +19,8 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
     --teacher_temp 0.04 \
     --warmup_teacher_temp_epochs 20 \
     --memax_weight 2 \
-    --exp_name cub_simgcd \
-    --dataset_dir 'cub' \
+    --exp_name cub_gt_bbox \
+    --dataset_dir '/lustre1/g/stat_han/datasets/cub/CUB_200_2011' \
+    --mask_dir '/home/mkyahx/MOS/userhome/cs/mkyahx/TokenCut/datasets/CUB/masks' \
     --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth'
 

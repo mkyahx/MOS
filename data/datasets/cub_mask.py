@@ -18,8 +18,8 @@ class CustomCub2011(Dataset):
     tgz_md5 = '97eceeb196236b17998738112f37df78'
 
     def __init__(self, root, mask_root = None, train=True, transform=None, target_transform=None, loader=default_loader, download=True):
-        self.mask_root = os.path.expanduser(mask_root) if mask_root else os.path.join(self.root, 'masks')
         self.root = os.path.expanduser(root)
+        self.mask_root = os.path.expanduser(mask_root) if mask_root else os.path.join(self.root, 'masks')
         self.transform = transform 
         self.target_transform = target_transform
         self.loader = loader

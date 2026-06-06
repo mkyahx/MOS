@@ -3,6 +3,16 @@
 set -e
 set -x
 
+USE_SEED=${USE_SEED:-0}
+TRAIN_SEED=${TRAIN_SEED:-0}
+SEED_ARGS=()
+
+if [ "$USE_SEED" = "1" ]; then
+    export PYTHONHASHSEED="$TRAIN_SEED"
+    export CUBLAS_WORKSPACE_CONFIG=${CUBLAS_WORKSPACE_CONFIG:-:4096:8}
+    SEED_ARGS=(--seed "$TRAIN_SEED" --deterministic)
+fi
+
 CUDA_VISIBLE_DEVICES=0 python train.py \
     --dataset_name 'scars' \
     --batch_size 128 \
@@ -21,4 +31,5 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
     --memax_weight 1 \
     --exp_name scars_simgcd \
     --dataset_dir 'stanford_car' \
-    --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth'
+    --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth' \
+    "${SEED_ARGS[@]}"

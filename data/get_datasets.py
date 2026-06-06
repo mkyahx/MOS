@@ -61,11 +61,13 @@ def get_datasets(dataset_name, train_transform, test_transform, args):
 
     # Get datasets
     get_dataset_f = get_dataset_funcs[dataset_name]
+    dataset_seed = 0 if getattr(args, 'seed', None) is None else args.seed
     datasets = get_dataset_f(train_transform=train_transform, 
                             test_transform=test_transform,
                             train_classes=args.train_classes,
                             prop_train_labels=args.prop_train_labels,
                             split_train_val=False,
+                            seed=dataset_seed,
                             args=args)
     # Set target transforms:
     target_transform_dict = {}

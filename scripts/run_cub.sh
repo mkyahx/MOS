@@ -3,6 +3,16 @@
 set -e
 set -x
 
+USE_SEED=${USE_SEED:-0}
+TRAIN_SEED=${TRAIN_SEED:-0}
+SEED_ARGS=()
+
+if [ "$USE_SEED" = "1" ]; then
+    export PYTHONHASHSEED="$TRAIN_SEED"
+    export CUBLAS_WORKSPACE_CONFIG=${CUBLAS_WORKSPACE_CONFIG:-:4096:8}
+    SEED_ARGS=(--seed "$TRAIN_SEED" --deterministic)
+fi
+
 CUDA_VISIBLE_DEVICES=0 python train.py \
     --dataset_name 'cub' \
     --batch_size 128 \
@@ -22,5 +32,5 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
     --exp_name cub_gt_bbox \
     --dataset_dir '/lustre1/g/stat_han/datasets/cub/CUB_200_2011' \
     --mask_dir '/home/mkyahx/MOS/userhome/cs/mkyahx/TokenCut/datasets/CUB/masks' \
-    --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth'
-
+    --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth' \
+    "${SEED_ARGS[@]}"

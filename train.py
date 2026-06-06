@@ -1,5 +1,7 @@
 import math
 import argparse
+import os
+import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -45,6 +47,8 @@ def parse_args():
     parser.add_argument("--mask_dir"     , type=str, default='cub/masks', help="custom masks root path")
     parser.add_argument("--osr_split_dir", type=str, default='data/ssb_splits', help="osr")
     parser.add_argument("--pretrain_path", type=str, default='pretrain_weight/dino_vitbase16_pretrain.pth', help="pretrain_path")
+    parser.add_argument("--seed", type=int, default=None, help="Set to enable reproducible training.")
+    parser.add_argument("--deterministic", action='store_true', default=False, help="Use deterministic CUDA/PyTorch behavior when --seed is set.")
     args                       = parser.parse_args()
     args                       = get_class_splits(args)
     args.num_labeled_classes   = len(args.train_classes)
@@ -56,6 +60,30 @@ def parse_args():
     args.num_mlp_layers        = 3
     args.mlp_out_dim           = args.num_labeled_classes + args.num_unlabeled_classes
     return args
+
+def set_random_seed(seed, deterministic=False):
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    if deterministic:
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
+    if deterministic:
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.allow_tf32 = False
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.use_deterministic_algorithms(True)
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
     
 def get_model(args,device):
     backbone   = network.__dict__['vit_base']()
@@ -189,9 +217,11 @@ def test(model, test_loader, epoch, save_name, args):
 
 if __name__ == "__main__":
     args                            = parse_args()
+    if args.seed is not None:
+        set_random_seed(args.seed, deterministic=args.deterministic)
     init_experiment(args,runner_name=[args.exp_name])
     device                          = torch.device(args.device)
-    torch.backends.cudnn.benchmark  = True
+    torch.backends.cudnn.benchmark  = args.seed is None or not args.deterministic
     model                           = get_model(args,device)
     
     train_transform, test_transform = get_transform(args.transform, image_size=args.image_size, args=args)
@@ -200,9 +230,13 @@ if __name__ == "__main__":
     
     label_len,unlabelled_len        = len(train_dataset.labelled_dataset),len(train_dataset.unlabelled_dataset)
     sample_weights                  = torch.DoubleTensor([1 if i < label_len else label_len / unlabelled_len for i in range(len(train_dataset))])
-    sampler                         = torch.utils.data.WeightedRandomSampler(sample_weights, num_samples=len(train_dataset))
+    loader_generator                = None
+    if args.seed is not None:
+        loader_generator            = torch.Generator()
+        loader_generator.manual_seed(args.seed)
+    sampler                         = torch.utils.data.WeightedRandomSampler(sample_weights, num_samples=len(train_dataset), generator=loader_generator)
     
-    train_loader                    = DataLoader(train_dataset, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False,sampler=sampler, drop_last=True, pin_memory=True)
-    test_loader_unlabelled          = DataLoader(unlabelled_train_examples_test, num_workers=args.num_workers,batch_size=256, shuffle=True, pin_memory=False)
+    train_loader                    = DataLoader(train_dataset, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False,sampler=sampler, drop_last=True, pin_memory=True, worker_init_fn=seed_worker if args.seed is not None else None, generator=loader_generator)
+    test_loader_unlabelled          = DataLoader(unlabelled_train_examples_test, num_workers=args.num_workers,batch_size=256, shuffle=True, pin_memory=False, worker_init_fn=seed_worker if args.seed is not None else None, generator=loader_generator)
     
     train(model, train_loader, None, test_loader_unlabelled, args)

@@ -31,5 +31,6 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
     --memax_weight 1 \
     --exp_name aircraft_mos \
     --dataset_dir 'fgvc-aircraft-2013b' \
+    --mask_dir 'fgvc-aircraft-2013b/data/masks' \
     --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth' \
     "${SEED_ARGS[@]}"

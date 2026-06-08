@@ -58,7 +58,7 @@ class FGVCAircraft(Dataset):
     class_types = ('variant', 'family', 'manufacturer')
     splits = ('train', 'val', 'trainval', 'test')
 
-    def __init__(self, root, class_type='variant', split='train', transform=None,
+    def __init__(self, root, mask_root = None, class_type='variant', split='train', transform=None,
                  target_transform=None, loader=default_loader, download=False):
         if split not in self.splits:
             raise ValueError('Split "{}" not found. Valid splits are: {}'.format(
@@ -69,6 +69,7 @@ class FGVCAircraft(Dataset):
                 class_type, ', '.join(self.class_types),
             ))
         self.root = os.path.expanduser(root)
+        self.mask_root = os.path.expanduser(mask_root) if mask_root else os.path.join(self.root, 'data', 'masks')
         self.class_type = class_type
         self.split = split
         self.classes_file = os.path.join(self.root, 'data',
@@ -100,7 +101,7 @@ class FGVCAircraft(Dataset):
         path, target = self.samples[index]
         sample = self.loader(path)
 
-        mask_path = os.path.join(self.root, 'data', 'masks', path.split('/')[-1].replace('.jpg', '.npy'))
+        mask_path = os.path.join(self.mask_root, path.split('/')[-1].replace('.jpg', '.npy'))
         mask = np.load(mask_path)  
         global_mean_values = np.array(sample).mean(axis=(0, 1), keepdims=True)
         mask_image = np.where(np.repeat(mask[:, :, np.newaxis], 3, axis=2) == 0, global_mean_values, np.array(sample))
@@ -219,9 +220,10 @@ def get_aircraft_datasets(train_transform, test_transform, train_classes=range(5
                     split_train_val=False, seed=0,args=None):
 
     np.random.seed(seed)
+    custom_mask_dir = getattr(args, 'mask_dir', None)
 
     # Init entire training set
-    whole_training_set = FGVCAircraft(root=args.dataset_dir, transform=train_transform, split='trainval')
+    whole_training_set = FGVCAircraft(root=args.dataset_dir, mask_root=custom_mask_dir, transform=train_transform, split='trainval')
 
     # Get labelled training set which has subsampled classes, then subsample some indices from that
     train_dataset_labelled = subsample_classes(deepcopy(whole_training_set), include_classes=train_classes)
@@ -239,7 +241,7 @@ def get_aircraft_datasets(train_transform, test_transform, train_classes=range(5
     train_dataset_unlabelled = subsample_dataset(deepcopy(whole_training_set), np.array(list(unlabelled_indices)))
 
     # Get test set for all classes
-    test_dataset = FGVCAircraft(root=args.dataset_dir, transform=test_transform, split='test')
+    test_dataset = FGVCAircraft(root=args.dataset_dir, mask_root=custom_mask_dir, transform=test_transform, split='test')
 
     # Either split train into train and val or use test set as val
     train_dataset_labelled = train_dataset_labelled_split if split_train_val else train_dataset_labelled

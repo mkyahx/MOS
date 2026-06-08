@@ -31,5 +31,6 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
     --memax_weight 1 \
     --exp_name scars_simgcd \
     --dataset_dir 'stanford_car' \
+    --mask_dir 'stanford_car' \
     --pretrain_path 'pretrain_weight/dino_vitbase16_pretrain.pth' \
     "${SEED_ARGS[@]}"

@@ -15,10 +15,11 @@ class CarsDataset(Dataset):
     """
         Cars Dataset
     """
-    def __init__(self, train=True, limit=0, data_dir='', transform=None):
+    def __init__(self, train=True, limit=0, data_dir='', mask_dir=None, transform=None):
 
         metas = os.path.join(data_dir, 'devkit/cars_train_annos.mat') if train else os.path.join(data_dir, 'devkit/cars_test_annos_withlabels.mat')
-        mask_dir = os.path.join(data_dir, 'cars_train_mask/') if train else os.path.join(data_dir, 'cars_test_mask/')
+        mask_root = os.path.expanduser(mask_dir) if mask_dir else data_dir
+        mask_dir = os.path.join(mask_root, 'cars_train_mask/') if train else os.path.join(mask_root, 'cars_test_mask/')
         data_dir = os.path.join(data_dir, 'cars_train/') if train else os.path.join(data_dir, 'cars_test/')
 
         self.loader = default_loader
@@ -121,9 +122,10 @@ def get_scars_datasets(train_transform, test_transform, train_classes=range(160)
                     split_train_val=False, seed=0,args=None):
 
     np.random.seed(seed)
+    custom_mask_dir = getattr(args, 'mask_dir', None)
 
     # Init entire training set
-    whole_training_set = CarsDataset(data_dir=args.dataset_dir, transform=train_transform, train=True)
+    whole_training_set = CarsDataset(data_dir=args.dataset_dir, mask_dir=custom_mask_dir, transform=train_transform, train=True)
 
     # Get labelled training set which has subsampled classes, then subsample some indices from that
     train_dataset_labelled = subsample_classes(deepcopy(whole_training_set), include_classes=train_classes)
@@ -141,7 +143,7 @@ def get_scars_datasets(train_transform, test_transform, train_classes=range(160)
     train_dataset_unlabelled = subsample_dataset(deepcopy(whole_training_set), np.array(list(unlabelled_indices)))
 
     # Get test set for all classes
-    test_dataset = CarsDataset(data_dir=args.dataset_dir, transform=test_transform, train=False)
+    test_dataset = CarsDataset(data_dir=args.dataset_dir, mask_dir=custom_mask_dir, transform=test_transform, train=False)
 
     # Either split train into train and val or use test set as val
     train_dataset_labelled = train_dataset_labelled_split if split_train_val else train_dataset_labelled
